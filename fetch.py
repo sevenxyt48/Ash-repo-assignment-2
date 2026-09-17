@@ -3,43 +3,104 @@
 # dependencies = ["requests"]
 # ///
 
-"""
-Fetch the numbers once, save the raw reply to data/, and never fetch again.
-
-    uv run fetch.py
-
-Change URL and FILE. The default is the Hong Kong Observatory's daily mean
-temperature for 2026, so the template runs before you have touched it and you
-can see what a file looks like when it arrives. It is an example, not your
-phenomenon: handing it in unchanged is handing in nothing.
-"""
-
 from pathlib import Path
-
+from datetime import date, timedelta
 import requests
+import time
 
-URL = ("https://data.weather.gov.hk/weatherAPI/opendata/opendata.php"
-       "?dataType=CLMTEMP&rformat=csv&station=HKO&year=2026")      # CHANGE ME
-FILE = "hko-daily-mean-temperature-2026.csv"                          # CHANGE ME: say what it is,
-                                                                      # keep the publisher's extension
+
+# --------------------------------------------------
+# Settings
+# --------------------------------------------------
+
+START_DATE = date(2026, 6, 17)
+END_DATE = date(2026, 9, 15)
+
+STATIONS = [
+    "KEV",  # Kevo
+    "KIL",  # Kilpisjärvi
+    "IVA",  # Ivalo
+    "MUO",  # Muonio
+    "PEL",  # Pello
+    "RAN",  # Ranua
+    "OUJ",  # Oulujärvi
+    "MEK",  # Mekrijärvi
+    "HAN",  # Hankasalmi
+    "NUR",  # Nurmijärvi
+    "TAR",  # Tartu
+]
+
+BASE_URL = "https://lake.fmi.fi/r-index-archive"
+
 HERE = Path(__file__).parent
-DATA = HERE / "data"
+DATA = HERE / "data" / "fmi-r-index"
 
 
-def fetch(url, path):
-    """Ask for the file once. If it is already in data/, do nothing."""
+# --------------------------------------------------
+# Download one file
+# --------------------------------------------------
+
+def download_file(url, path):
     if path.exists():
-        print(f"data/{path.name} is already here ({path.stat().st_size // 1024} KB). "
-              "Delete it to fetch again.")
-        return path
-    DATA.mkdir(exist_ok=True)
-    print(f"asking {url}")
-    reply = requests.get(url, timeout=60, headers={"User-Agent": "SD5913 PolyU student"})
-    reply.raise_for_status()
-    path.write_bytes(reply.content)      # the raw reply, byte for byte: what arrived is what gets committed
-    print(f"saved data/{path.name} ({path.stat().st_size // 1024} KB). Now: git add data")
-    return path
+        print(f"already exists: {path}")
+        return
+
+    print(f"downloading: {url}")
+
+    try:
+        response = requests.get(
+            url,
+            timeout=60,
+            headers={"User-Agent": "SD5913 PolyU student"}
+        )
+        response.raise_for_status()
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(response.content)
+
+        print(f"saved: {path}")
+
+    except requests.RequestException as error:
+        print(f"FAILED: {url}")
+        print(error)
+
+
+# --------------------------------------------------
+# Main
+# --------------------------------------------------
+
+def main():
+
+    DATA.mkdir(parents=True, exist_ok=True)
+
+    current = START_DATE
+    total = 0
+
+    while current <= END_DATE:
+
+        date_text = current.strftime("%Y%m%d")
+
+        for station in STATIONS:
+
+            filename = f"{station}-R-index-{date_text}.csv.gz"
+
+            url = f"{BASE_URL}/{filename}"
+            path = DATA / filename
+
+            download_file(url, path)
+
+            total += 1
+
+        current += timedelta(days=1)
+
+        # Avoid sending too many requests at once.
+        time.sleep(0.2)
+
+    print()
+    print("Download finished.")
+    print(f"Files checked: {total}")
+    print(f"Data folder: {DATA}")
 
 
 if __name__ == "__main__":
-    fetch(URL, DATA / FILE)
+    main()
