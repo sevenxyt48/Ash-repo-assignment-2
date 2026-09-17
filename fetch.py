@@ -8,12 +8,7 @@ from datetime import date, timedelta
 import time
 import requests
 
-
-# --------------------------------------------------
-# Settings
-# --------------------------------------------------
-
-START_DATE = date(2026, 7, 17)
+START_DATE = date(2026, 9, 6)
 END_DATE = date(2026, 9, 15)
 
 STATIONS = [
@@ -26,61 +21,36 @@ STATIONS = [
 ]
 
 BASE_URL = "https://lake.fmi.fi/r-index-archive"
-BASE_URL = "https://lake.fmi.fi/r-index-archive"
 
 HERE = Path(__file__).parent
 DATA = HERE / "data" / "fmi-r-index"
 
 
-# --------------------------------------------------
-# Download
-# --------------------------------------------------
-
 def download_file(url, path):
-
     if path.exists():
         print(f"already exists: {path.name}")
         return True
 
     for attempt in range(3):
-
         try:
-
-            print(
-                f"downloading: {path.name} "
-                f"(attempt {attempt + 1}/3)"
-            )
+            print(f"downloading: {path.name} (attempt {attempt + 1}/3)")
 
             response = requests.get(
                 url,
                 timeout=60,
-                headers={
-                    "User-Agent": "SD5913 PolyU student"
-                },
+                headers={"User-Agent": "SD5913 PolyU student"},
             )
 
             response.raise_for_status()
 
-            path.parent.mkdir(
-                parents=True,
-                exist_ok=True
-            )
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(response.content)
 
-            path.write_bytes(
-                response.content
-            )
-
-            print(
-                f"saved: {path}"
-            )
-
+            print(f"saved: {path}")
             return True
 
         except requests.RequestException as error:
-
-            print(
-                f"FAILED: {path.name}"
-            )
+            print(f"FAILED: {path.name}")
             print(error)
 
             if attempt < 2:
@@ -90,16 +60,8 @@ def download_file(url, path):
     return False
 
 
-# --------------------------------------------------
-# Main
-# --------------------------------------------------
-
 def main():
-
-    DATA.mkdir(
-        parents=True,
-        exist_ok=True
-    )
+    DATA.mkdir(parents=True, exist_ok=True)
 
     total = 0
     success = 0
@@ -107,13 +69,8 @@ def main():
 
     current = START_DATE
 
-    total_days = (
-        END_DATE - START_DATE
-    ).days + 1
-
-    total_files = (
-        total_days * len(STATIONS)
-    )
+    total_days = (END_DATE - START_DATE).days + 1
+    total_files = total_days * len(STATIONS)
 
     print()
     print("===================================")
@@ -128,21 +85,14 @@ def main():
 
     while current <= END_DATE:
 
-        date_text = current.strftime(
-            "%Y%m%d"
-        )
+        date_text = current.strftime("%Y%m%d")
 
         print()
-        print(
-            f"===== {current} ====="
-        )
+        print(f"===== {current} =====")
 
         for station in STATIONS:
 
-            filename = (
-                f"{station}-R-index-"
-                f"{date_text}.csv.gz"
-            )
+            filename = f"{station}-R-index-{date_text}.csv.gz"
 
             url = f"{BASE_URL}/{filename}"
 
@@ -150,15 +100,11 @@ def main():
 
             total += 1
 
-            if download_file(
-                url,
-                path
-            ):
+            if download_file(url, path):
                 success += 1
             else:
                 failed += 1
 
-            # Give FMI server a little break.
             time.sleep(1)
 
         current += timedelta(days=1)

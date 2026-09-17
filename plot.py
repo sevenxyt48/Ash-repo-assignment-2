@@ -24,24 +24,20 @@ DATA = HERE / "data" / "fmi-r-index"
 OUT = HERE / "out"
 MAP_CACHE = HERE / "data" / "map-finland.png"
 
+# Six stations used in fetch.py
 STATIONS = {
     "KEV": ("Kevo", 69.76, 27.01),
     "KIL": ("Kilpisjärvi", 69.05, 20.79),
     "IVA": ("Ivalo", 68.56, 27.29),
     "MUO": ("Muonio", 68.02, 23.53),
-    "PEL": ("Pello", 66.90, 24.08),
     "RAN": ("Ranua", 65.90, 26.41),
-    "OUJ": ("Oulujärvi", 64.52, 27.23),
     "MEK": ("Mekrijärvi", 62.77, 30.97),
-    "HAN": ("Hankasalmi", 62.25, 26.60),
-    "NUR": ("Nurmijärvi", 60.50, 24.65),
-    "TAR": ("Tartu", 58.26, 26.46),
 }
 
-# Finland + nearby northern Europe
-LON_MIN = 18
-LON_MAX = 34
-LAT_MIN = 57
+# Northern Finland + nearby area
+LON_MIN = 19
+LON_MAX = 33
+LAT_MIN = 61
 LAT_MAX = 71
 
 # R-index display range
@@ -65,7 +61,7 @@ def find_column(fieldnames, keywords):
         name = clean_name(field)
 
         for keyword in keywords:
-            if keyword in name:
+            if clean_name(keyword) in name:
                 return field
 
     return None
@@ -81,7 +77,12 @@ def parse_csv_file(path):
 
     results = []
 
-    with gzip.open(path, "rt", encoding="utf-8-sig", errors="replace") as file:
+    with gzip.open(
+        path,
+        "rt",
+        encoding="utf-8-sig",
+        errors="replace"
+    ) as file:
 
         # Detect delimiter.
         sample = file.read(5000)
@@ -93,9 +94,13 @@ def parse_csv_file(path):
         except csv.Error:
             delimiter = ";"
 
-        reader = csv.DictReader(file, delimiter=delimiter)
+        reader = csv.DictReader(
+            file,
+            delimiter=delimiter
+        )
 
         if not reader.fieldnames:
+            print(f"No columns found in {path.name}")
             return results
 
         time_column = find_column(
@@ -109,9 +114,10 @@ def parse_csv_file(path):
         )
 
         if r_column is None:
-            # Try a more relaxed search.
             for field in reader.fieldnames:
-                if "r" in clean_name(field) and "index" in clean_name(field):
+                name = clean_name(field)
+
+                if "r" in name and "index" in name:
                     r_column = field
                     break
 
@@ -122,8 +128,13 @@ def parse_csv_file(path):
 
         for row in reader:
 
-            time_text = str(row.get(time_column, "")).strip()
-            value_text = str(row.get(r_column, "")).strip()
+            time_text = str(
+                row.get(time_column, "")
+            ).strip()
+
+            value_text = str(
+                row.get(r_column, "")
+            ).strip()
 
             if not time_text or not value_text:
                 continue
@@ -143,7 +154,6 @@ def parse_csv_file(path):
             except ValueError:
                 continue
 
-            # Try several common time formats.
             parsed_time = None
 
             time_formats = [
@@ -156,7 +166,10 @@ def parse_csv_file(path):
 
             for fmt in time_formats:
                 try:
-                    parsed_time = datetime.strptime(time_text, fmt)
+                    parsed_time = datetime.strptime(
+                        time_text,
+                        fmt
+                    )
                     break
                 except ValueError:
                     pass
@@ -169,7 +182,9 @@ def parse_csv_file(path):
                 except ValueError:
                     continue
 
-            results.append((parsed_time, value))
+            results.append(
+                (parsed_time, value)
+            )
 
     return results
 
@@ -182,7 +197,9 @@ def load_data():
 
     daily_data = {}
 
-    files = sorted(DATA.glob("*-R-index-*.csv.gz"))
+    files = sorted(
+        DATA.glob("*-R-index-*.csv.gz")
+    )
 
     print(f"Found {len(files)} data files.")
 
@@ -208,9 +225,6 @@ def load_data():
             daily_data[day][station_code].append(value)
 
     # Convert each station to daily maximum.
-    #
-    # We use maximum R-index because it clearly shows
-    # when auroral activity was strongest during the day.
     frames = []
 
     for day in sorted(daily_data):
@@ -223,9 +237,13 @@ def load_data():
                 frame[station] = max(values)
 
         if frame:
-            frames.append((day, frame))
+            frames.append(
+                (day, frame)
+            )
 
-    print(f"Created {len(frames)} daily frames.")
+    print(
+        f"Created {len(frames)} daily frames."
+    )
 
     return frames
 
@@ -238,7 +256,11 @@ def lon_to_x(lon, zoom):
 
     n = 2 ** zoom
 
-    return (lon + 180) / 360 * n
+    return (
+        (lon + 180)
+        / 360
+        * n
+    )
 
 
 def lat_to_y(lat, zoom):
@@ -249,7 +271,9 @@ def lat_to_y(lat, zoom):
 
     return (
         1
-        - math.asinh(math.tan(lat_rad)) / math.pi
+        - math.asinh(
+            math.tan(lat_rad)
+        ) / math.pi
     ) / 2 * n
 
 
@@ -260,7 +284,9 @@ def lat_to_y(lat, zoom):
 def download_basemap():
 
     if MAP_CACHE.exists():
-        print(f"Using cached map: {MAP_CACHE}")
+        print(
+            f"Using cached map: {MAP_CACHE}"
+        )
         return
 
     print("Downloading map tiles...")
@@ -268,22 +294,59 @@ def download_basemap():
     zoom = 5
     tile_size = 256
 
-    x1 = int(lon_to_x(LON_MIN, zoom))
-    x2 = int(lon_to_x(LON_MAX, zoom))
+    x1 = int(
+        lon_to_x(
+            LON_MIN,
+            zoom
+        )
+    )
 
-    y1 = int(lat_to_y(LAT_MAX, zoom))
-    y2 = int(lat_to_y(LAT_MIN, zoom))
+    x2 = int(
+        lon_to_x(
+            LON_MAX,
+            zoom
+        )
+    )
 
-    width = (x2 - x1 + 1) * tile_size
-    height = (y2 - y1 + 1) * tile_size
+    y1 = int(
+        lat_to_y(
+            LAT_MAX,
+            zoom
+        )
+    )
+
+    y2 = int(
+        lat_to_y(
+            LAT_MIN,
+            zoom
+        )
+    )
+
+    width = (
+        x2 - x1 + 1
+    ) * tile_size
+
+    height = (
+        y2 - y1 + 1
+    ) * tile_size
 
     from PIL import Image
+    from io import BytesIO
 
-    canvas = Image.new("RGB", (width, height))
+    canvas = Image.new(
+        "RGB",
+        (width, height)
+    )
 
-    for x in range(x1, x2 + 1):
+    for x in range(
+        x1,
+        x2 + 1
+    ):
 
-        for y in range(y1, y2 + 1):
+        for y in range(
+            y1,
+            y2 + 1
+        ):
 
             url = (
                 "https://server.arcgisonline.com/"
@@ -292,62 +355,100 @@ def download_basemap():
                 f"tile/{zoom}/{y}/{x}"
             )
 
-            print(f"map tile {x}, {y}")
+            print(
+                f"map tile {x}, {y}"
+            )
 
             response = requests.get(
                 url,
                 timeout=30,
                 headers={
-                    "User-Agent": "SD5913 PolyU student"
+                    "User-Agent":
+                    "SD5913 PolyU student"
                 },
             )
 
             response.raise_for_status()
 
-            from io import BytesIO
-
             tile = Image.open(
                 BytesIO(response.content)
             ).convert("RGB")
 
-            px = (x - x1) * tile_size
-            py = (y - y1) * tile_size
+            px = (
+                x - x1
+            ) * tile_size
 
-            canvas.paste(tile, (px, py))
+            py = (
+                y - y1
+            ) * tile_size
+
+            canvas.paste(
+                tile,
+                (px, py)
+            )
 
     MAP_CACHE.parent.mkdir(
         parents=True,
         exist_ok=True
     )
 
-    canvas.save(MAP_CACHE)
+    canvas.save(
+        MAP_CACHE
+    )
 
-    print(f"Saved map: {MAP_CACHE}")
+    print(
+        f"Saved map: {MAP_CACHE}"
+    )
 
 
 # --------------------------------------------------
 # Map coordinate conversion
 # --------------------------------------------------
 
-def geographic_to_image(lon, lat, image_width, image_height):
+def geographic_to_image(
+    lon,
+    lat,
+    image_width,
+    image_height
+):
 
     zoom = 5
     tile_size = 256
 
-    x_min = lon_to_x(LON_MIN, zoom)
-    x_max = lon_to_x(LON_MAX, zoom)
+    x_min = lon_to_x(
+        LON_MIN,
+        zoom
+    )
 
-    y_min = lat_to_y(LAT_MAX, zoom)
-    y_max = lat_to_y(LAT_MIN, zoom)
+    x_max = lon_to_x(
+        LON_MAX,
+        zoom
+    )
+
+    y_min = lat_to_y(
+        LAT_MAX,
+        zoom
+    )
+
+    y_max = lat_to_y(
+        LAT_MIN,
+        zoom
+    )
 
     x = (
-        (lon_to_x(lon, zoom) - x_min)
+        (
+            lon_to_x(lon, zoom)
+            - x_min
+        )
         / (x_max - x_min)
         * image_width
     )
 
     y = (
-        (lat_to_y(lat, zoom) - y_min)
+        (
+            lat_to_y(lat, zoom)
+            - y_min
+        )
         / (y_max - y_min)
         * image_height
     )
@@ -382,23 +483,41 @@ def make_animation():
         MAP_CACHE
     ).convert("RGB")
 
-    image_width, image_height = map_image.size
+    image_width, image_height = (
+        map_image.size
+    )
 
     fig, ax = plt.subplots(
         figsize=(10, 8)
     )
 
-    ax.imshow(map_image)
+    ax.imshow(
+        map_image
+    )
 
-    ax.set_xlim(0, image_width)
-    ax.set_ylim(image_height, 0)
+    ax.set_xlim(
+        0,
+        image_width
+    )
+
+    ax.set_ylim(
+        image_height,
+        0
+    )
 
     ax.axis("off")
 
-    # Station coordinates.
+    # --------------------------------------------------
+    # Station coordinates
+    # --------------------------------------------------
+
     station_positions = {}
 
-    for code, (name, lat, lon) in STATIONS.items():
+    for code, (
+        name,
+        lat,
+        lon
+    ) in STATIONS.items():
 
         x, y = geographic_to_image(
             lon,
@@ -407,20 +526,41 @@ def make_animation():
             image_height
         )
 
-        station_positions[code] = (x, y)
+        station_positions[code] = (
+            x,
+            y
+        )
 
-    # Plot station locations.
-    for code, (x, y) in station_positions.items():
+    # --------------------------------------------------
+    # Station labels
+    # --------------------------------------------------
+
+    for code, (
+        x,
+        y
+    ) in station_positions.items():
 
         ax.scatter(
             x,
             y,
-            s=10,
+            s=12,
             c="white",
             edgecolors="black",
-            linewidths=0.5,
+            linewidths=0.6,
             zorder=5,
         )
+
+        ax.text(
+            x + 5,
+            y - 5,
+            code,
+            fontsize=8,
+            zorder=6,
+        )
+
+    # --------------------------------------------------
+    # Title
+    # --------------------------------------------------
 
     title = ax.set_title(
         "",
@@ -428,7 +568,10 @@ def make_animation():
         pad=12
     )
 
-    # Empty scatter.
+    # --------------------------------------------------
+    # Activity points
+    # --------------------------------------------------
+
     activity = ax.scatter(
         [],
         [],
@@ -443,7 +586,10 @@ def make_animation():
         zorder=10,
     )
 
-    # Color bar.
+    # --------------------------------------------------
+    # Color bar
+    # --------------------------------------------------
+
     colorbar = fig.colorbar(
         activity,
         ax=ax,
@@ -456,9 +602,15 @@ def make_animation():
         fontsize=11
     )
 
+    # --------------------------------------------------
+    # Animation update
+    # --------------------------------------------------
+
     def update(frame_number):
 
-        day, data = frames[frame_number]
+        day, data = frames[
+            frame_number
+        ]
 
         xs = []
         ys = []
@@ -470,22 +622,32 @@ def make_animation():
             if station not in station_positions:
                 continue
 
-            x, y = station_positions[station]
+            x, y = station_positions[
+                station
+            ]
 
             xs.append(x)
             ys.append(y)
 
-            value = max(0, min(R_MAX, value))
+            value = max(
+                0,
+                min(
+                    R_MAX,
+                    value
+                )
+            )
 
             values.append(value)
 
             # Stronger activity = larger point.
             sizes.append(
-                30 + value * 4
+                10 + value * 3
             )
 
         activity.set_offsets(
-            list(zip(xs, ys))
+            list(
+                zip(xs, ys)
+            )
         )
 
         activity.set_sizes(
@@ -497,26 +659,36 @@ def make_animation():
         )
 
         title.set_text(
-            f"Auroral Activity\n"
+            "Auroral Activity Across "
+            "Northern Europe\n"
             f"{day.strftime('%Y-%m-%d')}  |  "
-            f"FMI R-index"
+            "FMI R-index"
         )
 
         return activity, title
+
+    # --------------------------------------------------
+    # Create animation
+    # --------------------------------------------------
 
     animation = FuncAnimation(
         fig,
         update,
         frames=len(frames),
-        interval=150,
+        interval=500,
         blit=False,
         repeat=True,
     )
 
-    # First frame PNG.
+    # --------------------------------------------------
+    # Save first frame as PNG
+    # --------------------------------------------------
+
     update(0)
 
-    png_path = OUT / "aurora-map.png"
+    png_path = (
+        OUT / "aurora-map.png"
+    )
 
     fig.savefig(
         png_path,
@@ -524,22 +696,39 @@ def make_animation():
         bbox_inches="tight"
     )
 
-    print(f"Saved: {png_path}")
+    print(
+        f"Saved: {png_path}"
+    )
 
-    # Animated GIF.
-    gif_path = OUT / "aurora-animation.gif"
+    # --------------------------------------------------
+    # Save animation as GIF
+    # --------------------------------------------------
 
-    print("Creating animation...")
+    gif_path = (
+        OUT / "aurora-animation.gif"
+    )
+
+    print(
+        "Creating animation..."
+    )
 
     animation.save(
         gif_path,
-        writer=PillowWriter(fps=5)
+        writer=PillowWriter(
+            fps=2
+        )
     )
 
-    print(f"Saved: {gif_path}")
+    print(
+        f"Saved: {gif_path}"
+    )
 
     plt.close(fig)
 
+
+# --------------------------------------------------
+# Run
+# --------------------------------------------------
 
 if __name__ == "__main__":
     make_animation()
