@@ -6,7 +6,6 @@
 from pathlib import Path
 import json
 import folium
-from folium.plugins import HeatMap
 
 
 HERE = Path(__file__).parent
@@ -22,22 +21,35 @@ points = [
     if "decimalLatitude" in r and "decimalLongitude" in r
 ]
 
-print("First point:", points[0])
-print("Type:", type(points[0]))
-
+# Use a UK-centered map view that allows regular zooming and clear point markers.
 m = folium.Map(
-    location=[54.5, -3],
-    zoom_start=6,
-    tiles="CartoDB positron"
+    location=[54.5, -3.0],
+    zoom_start=5,
+    min_zoom=3,
+    max_zoom=12,
+    zoom_control=True,
+    control_scale=True,
+    prefer_canvas=True,
 )
-
-HeatMap(
-    points,
-    radius=12,
-    blur=10,
-    min_opacity=0.3
+folium.TileLayer(
+    tiles="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
+    attr='&copy; OpenStreetMap contributors &copy; CARTO',
+    name="CartoDB Light",
+    max_zoom=20,
+    subdomains="abcd",
 ).add_to(m)
 
-m.save(OUT)
+for lat, lon in points:
+    folium.CircleMarker(
+        location=[lat, lon],
+        radius=3,
+        color="#d62728",
+        fill=True,
+        fill_color="#d62728",
+        fill_opacity=0.8,
+        weight=0.8,
+    ).add_to(m)
+
+m.save(OUT, close_file=True)
 
 print(f"saved {OUT}")
