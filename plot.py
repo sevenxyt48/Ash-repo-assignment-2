@@ -3,63 +3,109 @@
 # dependencies = ["matplotlib"]
 # ///
 
-"""
-Read the file in data/, make one picture, save it to out/.
-
-    uv run plot.py
-
-Three parts, and you will replace all three: rows() reads the file the way *your*
-file needs reading, the loop in main() picks the numbers out of it, and the plot at
-the bottom is the transformation you chose. Print before you plot.
-"""
-
 import csv
+import gzip
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-FILE = "hko-daily-mean-temperature-2026.csv"   # CHANGE ME: the same name as in fetch.py
-PICTURE = "plot.png"                           # what goes into out/, and into the README
 
-HERE = Path(__file__).parent
-DATA = HERE / "data" / FILE
-OUT = HERE / "out"
+DATA = Path(__file__).parent / "data" / "fmi-r-index"
+OUT = Path(__file__).parent / "out"
+
+STATIONS = {
+    "KEV": "Kevo",
+    "KIL": "Kilpisjärvi",
+    "IVA": "Ivalo",
+    "MUO": "Muonio",
+    "RAN": "Ranua",
+    "MEK": "Mekrijärvi",
+}
 
 
 def rows(path):
-    """The file as a list of lists, one per line. The Observatory puts three lines
-    of titles above the table and a legend below it, so keep only the lines that
-    start with a year."""
-    kept = []
-    with path.open(encoding="utf-8-sig", newline="") as handle:
-        for line in csv.reader(handle):
-            if line and line[0].isdigit():
-                kept.append(line)
-    return kept
+    """Read time and R-index from one FMI .csv.gz file."""
+    data = []
+
+    with gzip.open(path, "rt", encoding="utf-8-sig") as file:
+        reader = csv.DictReader(file)
+
+        for row in reader:
+            try:
+                time = row["Time"]
+                value = float(row["R-index"])
+                data.append((time, value))
+            except (ValueError, KeyError):
+                continue
+
+    return data
 
 
 def main():
-    table = rows(DATA)
-    print(f"{DATA.name}: {len(table)} rows. The first one: {table[0]}")
+    # day -> station -> maximum R-index
+    values = {}
 
-    days, values = [], []
-    for i, (year, month, day, value, quality) in enumerate(table):   # the loop over the numbers
-        if value == "***":                   # the Observatory's word for "missing"
+    for path in sorted(DATA.glob("*-R-index-*.csv.gz")):
+        station = path.name.split("-")[0]
+
+        if station not in STATIONS:
             continue
-        days.append(i + 1)
-        values.append(float(value))          # it arrived as text; make it a number
-    print(f"{len(values)} values, from {min(values)} to {max(values)}")
 
-    fig, ax = plt.subplots(figsize=(10, 4))
-    ax.plot(days, values, color="#d6591d", linewidth=1.5)
-    ax.set_xlabel("day of 2026")
-    ax.set_ylabel("daily mean temperature, °C")
-    ax.set_title("Hong Kong Observatory, 2026 so far")
+        for time, value in rows(path):
+            day = time[:10]
+
+            if day not in values:
+                values[day] = {}
+
+            if station not in values[day]:
+                values[day][station] = value
+            else:
+                values[day][station] = max(
+                    values[day][station], value
+                )
+
+    days = sorted(values)
+
+    stations = list(STATIONS)
+
+    matrix = [
+        [values.get(day, {}).get(station, 0) for day in days]
+        for station in stations
+    ]
+
+    print(f"{len(days)} days, {len(stations)} stations")
+    print(f"R-index range: {min(map(min, matrix))} to {max(map(max, matrix))}")
+
+    fig, ax = plt.subplots(figsize=(10, 5))
+
+    image = ax.imshow(
+        matrix,
+        aspect="auto",
+        cmap="viridis",
+        vmin=0,
+        vmax=100,
+    )
+
+    ax.set_xticks(range(len(days)))
+    ax.set_xticklabels(days, rotation=45)
+
+    ax.set_yticks(range(len(stations)))
+    ax.set_yticklabels(STATIONS.values())
+
+    ax.set_xlabel("Date")
+    ax.set_ylabel("Observation station")
+    ax.set_title("Auroral Activity Across Northern Finland")
+
+    colorbar = fig.colorbar(image, ax=ax)
+    colorbar.set_label("Daily maximum R-index")
+
     fig.tight_layout()
 
     OUT.mkdir(exist_ok=True)
-    fig.savefig(OUT / PICTURE, dpi=150)
-    print(f"saved out/{PICTURE}")
+    fig.savefig(OUT / "aurora-heatmap.png", dpi=150)
+
+    print("saved out/aurora-heatmap.png")
+
     plt.show()
 
 
