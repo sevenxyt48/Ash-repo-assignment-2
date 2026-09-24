@@ -1,16 +1,6 @@
 # The phenomenon
 
-<!-- This is the SD5913 assignment 2 template. Everything in this file is yours to
-replace, and the check counts words: comments like this one are not words, so
-delete each one as you write. Start with the heading: name the phenomenon.
-
-Then, in this order, at least 150 words in total.
-
-New to folders, paths, or the files here whose names start with a dot? Read
-https://github.com/sd5913/pfad/blob/2026/reference/files.md first. Ten minutes. -->
-
-![what the picture is](out/plot.png)
-
+(out/plot.html) is the real picture — it's an interactive map, so GitHub can only show a screenshot above. Open the HTML file in a browser to zoom and watch the clusters split apart.
 ## The phenomenon
 
 <!-- What goes up and down, and why you looked at it. -->
@@ -26,9 +16,9 @@ Source: https://api.gbif.org/v1/occurrence/search
 
 ## What the picture shows
 
-The map shows where House Sparrow observations were recorded across the UK. The points make it easier to see areas where observations are more concentrated.
+The map groups nearby sightings into clusters, each labelled with a count, so density is readable at a glance instead of getting lost under thousands of overlapping dots. Zooming in splits a cluster into smaller ones, and past a certain zoom level the individual sightings show up on their own.
 
-The picture does not show the actual number of House Sparrows living in each area. It only shows recorded observations in GBIF, so areas with more records may partly reflect differences in observation and data collection.
+The picture does not show the actual number of House Sparrows living in each area. It only shows recorded observations in GBIF, so areas with more records may partly reflect differences in observation effort and data collection, not just bird density.
 
 ## Run it
 
@@ -36,3 +26,4 @@ The picture does not show the actual number of House Sparrows living in each are
 uv run fetch.py
 uv run plot.py
 ```
+plot.py builds the map and imports page.py to add the title, frame, and source footer around it — page.py doesn't run on its own.
