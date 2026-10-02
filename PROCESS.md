@@ -2,7 +2,7 @@
 
 ## Tools
 
-I used Gemini to talk through the assignment brief and what is the assignment exactly. I used ChatGPT to search for data sources and to write and iterate on `fetch.py` and `plot.py` — picking the map API, shaping the request, and getting the first working version of the map. I used Claude to rework the map's UI once the layout and interaction were unusable: switching to clustering so the map stays readable and responsive at every zoom level, and adding the title/frame/footer around it.
+I used Gemini to talk through the assignment brief and clarify what was required. I used ChatGPT to search for data sources and to write and iterate on `fetch.py` and `plot.py` — picking the map API, shaping the request, and getting the first working version of the map. I used Claude to rework the map's UI once the layout and interaction were unusable: switching to clustering so the map stays readable and responsive at every zoom level, and adding the title/frame/footer around it.
 
 ## Kept
 
