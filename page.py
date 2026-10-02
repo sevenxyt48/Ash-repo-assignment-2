@@ -1,8 +1,13 @@
 """Wraps a folium-saved map in a centered page: title, framed map, footer.
 
-Not a standalone script — imported by plot.py, so it carries no
-`# /// script` block of its own.
+Imported by plot.py, not run directly — uses only the standard library,
+so no third-party dependencies to declare.
 """
+
+# /// script
+# requires-python = ">=3.10"
+# dependencies = []
+# ///
 
 from pathlib import Path
 
