@@ -1,8 +1,10 @@
-# The phenomenon
+# House sparrow sightings, UK, 2026
+
+![Map of House Sparrow sightings across the UK, grouped into clusters](out/out.png)
 
 (out/plot.html) is the real picture — it's an interactive map, so GitHub can only show a screenshot above. Open the HTML file in a browser to zoom and watch the clusters split apart.
-## The phenomenon
 
+## The phenomenon
 <!-- What goes up and down, and why you looked at it. -->
 I looked at the distribution of House Sparrow observations in the United Kingdom in 2026. I chose this phenomenon because bird observations can show where a species is recorded more often in different parts of the country. I wanted to see whether the observations are spread evenly across the UK or concentrated in particular areas.
 
