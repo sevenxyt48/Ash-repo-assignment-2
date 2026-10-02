@@ -54,11 +54,10 @@ CLUSTER_COLORS = """
 """
 
 
-def load_points(path: Path) -> list[list[float]]:
-    data = json.loads(path.read_text(encoding="utf-8"))
+def load_points(raw: dict) -> list[list[float]]:
     return [
         [r["decimalLatitude"], r["decimalLongitude"]]
-        for r in data["results"]
+        for r in raw["results"]
         if "decimalLatitude" in r and "decimalLongitude" in r
     ]
 
@@ -109,7 +108,16 @@ def build_map(points: list[list[float]]) -> folium.Map:
     return m
 
 
-points = load_points(DATA)
+raw = json.loads(DATA.read_text(encoding="utf-8"))
+
+# Print before plot: confirm the shape of one record and the type of the
+# value the map actually depends on, before trusting it to folium.
+first_record = raw["results"][0]
+print(first_record)
+print(first_record["decimalLatitude"])
+print(type(first_record["decimalLatitude"]))
+
+points = load_points(raw)
 m = build_map(points)
 m.save(OUT, close_file=True)
 wrap_page(OUT, m.get_name(), TITLE, SUBTITLE, SOURCE_HTML)
