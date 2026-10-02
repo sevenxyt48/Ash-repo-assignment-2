@@ -75,11 +75,13 @@ def build_map(points: list[list[float]]) -> folium.Map:
     )
 
     folium.TileLayer(
-        tiles="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png",
-        attr='&copy; OpenStreetMap contributors &copy; CARTO',
-        name="CartoDB Light",
-        max_zoom=20,
-        subdomains="abcd",
+        tiles=(
+            "https://server.arcgisonline.com/ArcGIS/rest/services/"
+            "World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+        ),
+        attr="Tiles &copy; Esri — Esri, HERE, Garmin, FAO, NOAA, USGS",
+        name="Esri World Street Map",
+        max_zoom=19,
     ).add_to(m)
 
     # Re-clusters live as you zoom: many small clusters merge zoomed out,
